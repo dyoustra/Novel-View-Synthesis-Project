@@ -85,13 +85,13 @@ novel-view-synthesis/
 ├── colmap/                    # SfM output: poses + sparse cloud (gitignored)
 ├── scripts/
 │   ├── 01_extract_frames.py   # ffmpeg + blur (variance-of-Laplacian) filtering
-│   ├── 02_run_colmap.sh        # SfM: sequential matching + mapper (+ feature masks)
-│   ├── 02b_make_masks.py       # SAM2 video segmentation of arm/gripper
-│   ├── 03_train_gsplat.py      # 3DGS training (Method C) w/ loss masks
-│   ├── 03_train_wildgs.py      # wild-gaussians training (Method B)
-│   ├── 03b_eval_heldout.py     # PSNR/SSIM/LPIPS on held-out frames
-│   ├── 04_render_orbits.py     # auto orbit/arc trajectories → 4 views per ref
-│   └── 05_run_zeronvs.py       # diffusion baseline (Method ZeroNVS)
+│   ├── 02_make_masks.py        # SAM2 arm/gripper masks (feed COLMAP + gsplat)
+│   ├── 03_run_colmap.sh        # SfM: sequential matching + mapper (uses feature masks)
+│   ├── 04_train_gsplat.py      # Method C: 3DGS w/ loss masks  ┐ sibling stage,
+│   ├── 04_train_wildgs.py      # Method B: wild-gaussians        ┘ parallelizable (2 GPUs)
+│   ├── 05_eval_heldout.py      # PSNR/SSIM/LPIPS on held-out frames (B & C)
+│   ├── 06_render_orbits.py     # auto orbit/arc trajectories → 4 views per ref (B & C)
+│   └── 07_run_zeronvs.py       # diffusion baseline (ZeroNVS)
 ├── outputs/
 │   ├── gsplat/                 # Method C model + novel views + metrics
 │   ├── wildgs/                 # Method B model + novel views + metrics
@@ -105,7 +105,7 @@ code; our `scripts/` are thin wrappers that get data into each tool's expected
 format, invoke its entrypoint, and collect outputs. Acquisition:
 
 - **COLMAP** — installed binary (`brew install colmap` / apt / conda), invoked
-  via CLI by `02_run_colmap.sh`. Not vendored.
+  via CLI by `03_run_colmap.sh`. Not vendored.
 - **gsplat** — `pip install gsplat` (compiles CUDA kernels). Not vendored.
 - **wild-gaussians, SAM2, ZeroNVS** — cloned by `setup.sh` into `third_party/`
   **at pinned commit SHAs**, with model weights downloaded (SAM2 checkpoint,
@@ -124,37 +124,41 @@ isolation.
 video (even temporal sampling). Reject motion-blurred frames via
 variance-of-Laplacian sharpness threshold (blurry frames poison SfM matching).
 
-**02b — Arm masks (SAM2).** Click the arm in one frame; SAM2 propagates the
+**02 — Arm masks (SAM2).** Click the arm in one frame; SAM2 propagates the
 mask through the video. Add correction clicks where it drifts (~5–10 min total).
-Mask also covers the briefly-manipulated object during its motion window.
-Fallback if SAM2 install is painful: black-arm color/brightness threshold or a
-fixed foreground-region mask.
+Mask also covers the briefly-manipulated object during its motion window. Runs
+*before* COLMAP because its masks feed both COLMAP (stage 03) and gsplat
+(stage 04). Fallback if SAM2 install is painful: black-arm color/brightness
+threshold or a fixed foreground-region mask.
 
-**02 — COLMAP SfM.** Feature extraction → **sequential matching** (exploits
+**03 — COLMAP SfM.** Feature extraction → **sequential matching** (exploits
 video frame overlap; far faster than exhaustive) → mapper (bundle adjustment) →
 export poses + sparse cloud. Flags: `--ImageReader.single_camera 1` (one fixed
-camera), feature masks from 02b. Convert output to the format gsplat /
+camera), feature masks from stage 02. Convert output to the format gsplat /
 wild-gaussians expect.
 
-**03 (C) — gsplat training.** Initialize Gaussians from the COLMAP sparse cloud,
-~30k iterations with densification/pruning, **arm pixels excluded from the loss
-via masks**. Save model.
+**04 — Training (two sibling methods, same stage).** Both consume the shared
+COLMAP output and write to disjoint outputs, so they are independent and may run
+**sequentially on one GPU or in parallel across two GPUs/machines** (see §9).
 
-**03 (B) — wild-gaussians training.** Same COLMAP input, no masks; transient
-occluders handled by the model. Save model.
+- **04 (C) — gsplat:** initialize Gaussians from the COLMAP sparse cloud, ~30k
+  iterations with densification/pruning, **arm pixels excluded from the loss via
+  masks**. Save model to `outputs/gsplat/`.
+- **04 (B) — wild-gaussians:** same COLMAP input, no masks; transient occluders
+  handled by the model's uncertainty. Save model to `outputs/wildgs/`.
 
-**03b — Held-out evaluation.** Hold out ~10% of frames from training (both B and
+**05 — Held-out evaluation.** Hold out ~10% of frames from training (both B and
 C). Render their exact COLMAP poses; compute **PSNR / SSIM / LPIPS** vs. real
 frames. (LPIPS weighted heavily — it tracks floater/sharp-but-wrong artifacts
 that PSNR misses.) Kept separate from the 100 deliverable orbits.
 
-**04 — Orbit rendering.** Compute scene centroid + mean camera radius/height
+**06 — Orbit rendering.** Compute scene centroid + mean camera radius/height
 from COLMAP poses. Pick **25 reference frames** (even temporal sampling). For
 each, anchor an elevated arc around the centroid at that frame's pose and sample
 **4 novel poses** — offsets large enough to be clearly novel, but within the
 reconstructed region so quality holds → **25×4 = 100 novel views per method**.
 
-**05 — ZeroNVS.** For each of the same 25 reference frames: single image +
+**07 — ZeroNVS.** For each of the same 25 reference frames: single image +
 relative target pose → novel view, reusing the same target offsets as the 3DGS
 orbits where ZeroNVS pose conditioning allows.
 
@@ -174,10 +178,10 @@ ZeroNVS identity drift & hallucinated occluded geometry.
 Fail loud at stage boundaries — a half-working reconstruction is worse than one
 that errors, because it surfaces only when the report looks bad.
 
-- **02 (COLMAP):** assert most frames registered (common silent failure:
+- **03 (COLMAP):** assert most frames registered (common silent failure:
 only ~10% registered). Report registration rate.
-- **03 (training):** assert sane final Gaussian count; renders not black.
-- **04 (rendering):** assert non-degenerate (non-black, non-empty) outputs.
+- **04 (training):** assert sane final Gaussian count; renders not black.
+- **06 (rendering):** assert non-degenerate (non-black, non-empty) outputs.
 - All stages validate inputs exist before running.
 
 ## 8. Testing
@@ -209,6 +213,15 @@ Rough wall-clock on an RTX 4090 / A6000-class GPU:
 | Render orbits                 | ~few min                            |
 | ZeroNVS setup                 | hours (**main time sink**)          |
 | ZeroNVS inference (100 views) | ~30–60 min                          |
+
+**Training concurrency (stage 04).** Methods B and C share the immutable COLMAP
+output and write to disjoint output dirs, so they are independent.
+- **Single GPU:** run them **sequentially** — concurrent runs only time-slice the
+  same cores (no wall-clock gain) and risk CUDA OOM at peak Gaussian count.
+- **Two GPUs / machines:** dispatch C to one device and B to the other for a
+  genuine ~2× speedup on the training stage. (The local CUDA box + remote server
+  make this available here.) Parallelism is gated by the *GPU resource*, not the
+  code.
 
 
 ## 10. Risks & Mitigations

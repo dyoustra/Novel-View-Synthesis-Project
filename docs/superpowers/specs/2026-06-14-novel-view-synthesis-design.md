@@ -216,12 +216,13 @@ Rough wall-clock on an RTX 4090 / A6000-class GPU:
 
 **Training concurrency (stage 04).** Methods B and C share the immutable COLMAP
 output and write to disjoint output dirs, so they are independent.
-- **Single GPU:** run them **sequentially** — concurrent runs only time-slice the
-  same cores (no wall-clock gain) and risk CUDA OOM at peak Gaussian count.
-- **Two GPUs / machines:** dispatch C to one device and B to the other for a
-  genuine ~2× speedup on the training stage. (The local CUDA box + remote server
-  make this available here.) Parallelism is gated by the *GPU resource*, not the
-  code.
+- **Default — single GPU, sequential:** run C then B. This is the target for
+  implementation. Concurrent runs on one GPU only time-slice the same cores (no
+  wall-clock gain) and risk CUDA OOM at peak Gaussian count, so we do not do that.
+- **Future optimization — two GPUs/machines:** dispatch C to one device and B to
+  the other for a genuine ~2× speedup. The stage scripts take an explicit device
+  argument so this is available later without code changes, but it is **not** the
+  default. Parallelism is gated by the *GPU resource*, not the code.
 
 
 ## 10. Risks & Mitigations

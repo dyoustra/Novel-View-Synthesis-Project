@@ -25,7 +25,7 @@ def parse_images_txt(path: Path) -> list[ImagePose]:
         if not s or s.startswith("#"):
             continue
         parts = s.split()
-        if len(parts) < 10 or not parts[0].lstrip("-").isdigit():
+        if len(parts) < 10 or not parts[0].lstrip("-").isdigit() or not any(c.isalpha() for c in parts[9]):
             continue  # 2D-points line or other non-pose content
         poses.append(ImagePose(
             image_id=int(parts[0]),

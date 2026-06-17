@@ -45,6 +45,19 @@ def test_parse_images_txt_handles_blank_points_line(tmp_path: Path):
     assert poses[2].tvec == (9.0, 9.0, 9.0)
 
 
+def test_parse_images_txt_ignores_integer_points_line(tmp_path: Path):
+    # a points line with >=10 integer tokens must NOT be parsed as a pose
+    text = (
+        "1 1.0 0.0 0.0 0.0 0.5 0.0 0.0 1 frame_00000.png\n"
+        "10 20 1 30 40 2 50 60 3 70 80 4\n"
+    )
+    f = tmp_path / "images.txt"
+    f.write_text(text)
+    poses = parse_images_txt(f)
+    assert len(poses) == 1
+    assert poses[0].name == "frame_00000.png"
+
+
 def test_parse_images_txt_tolerates_trailing_blank(tmp_path: Path):
     text = (
         "1 1.0 0.0 0.0 0.0 0.5 0.0 0.0 1 frame_00000.png\n"

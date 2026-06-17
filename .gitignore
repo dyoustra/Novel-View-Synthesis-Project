@@ -1,3 +1,11 @@
 *.pdf
 *.mp4
 *.png
+data/frames/
+masks/
+colmap/
+outputs/
+third_party/
+__pycache__/
+.pytest_cache/
+*.egg-info/

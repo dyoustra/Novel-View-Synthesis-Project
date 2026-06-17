@@ -78,6 +78,11 @@ def main() -> None:
         rows.append({"name": pp.name, "psnr": psnr(gt, pred),
                      "ssim": ssim(gt, pred), "lpips": score_lpips(gt, pred)})
 
+    if not rows:
+        raise SystemExit(
+            "No held-out frames matched between COLMAP poses and --frames; "
+            "check --frames path and that filenames match."
+        )
     summary = {k: float(np.mean([r[k] for r in rows])) for k in ("psnr", "ssim", "lpips")}
     (out / "metrics.json").write_text(json.dumps(
         {"per_image": rows, "mean": summary}, indent=2))

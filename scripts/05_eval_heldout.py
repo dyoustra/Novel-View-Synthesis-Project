@@ -24,14 +24,13 @@ from nvs.colmap_io import parse_images_txt
 from nvs.metrics import psnr, ssim, lpips_fn
 from nvs.trajectory import qvec_to_rotmat
 
-import importlib.util
-spec = importlib.util.spec_from_file_location(
-    "render_orbits", str(Path(__file__).with_name("06_render_orbits.py")))
-render_orbits = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(render_orbits)
-
-
 def main() -> None:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "render_orbits", str(Path(__file__).with_name("06_render_orbits.py")))
+    render_orbits = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(render_orbits)
+
     p = argparse.ArgumentParser()
     p.add_argument("--colmap", default="colmap")
     p.add_argument("--frames", default="data/frames")

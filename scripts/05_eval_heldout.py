@@ -1,9 +1,10 @@
 """Stage 05: render held-out poses and compute PSNR/SSIM/LPIPS.
 
-Held-out frames = every Kth frame (excluded from training by name list).
+Held-out frames = every Kth frame, coupled to gsplat's test_every split so that
+the evaluated frames were genuinely excluded from training (not training-set fit).
 Usage:
   python scripts/05_eval_heldout.py --colmap colmap --frames data/frames \
-      --ckpt outputs/gsplat/ckpts/ckpt_29999.pt --out outputs/gsplat/eval --every 10
+      --ckpt outputs/gsplat/ckpts/ckpt_29999.pt --out outputs/gsplat/eval --every 8
 """
 from __future__ import annotations
 
@@ -36,7 +37,9 @@ def main() -> None:
     p.add_argument("--frames", default="data/frames")
     p.add_argument("--ckpt", required=True)
     p.add_argument("--out", required=True)
-    p.add_argument("--every", type=int, default=10)
+    p.add_argument("--every", type=int, default=8,
+                   help="evaluate every Nth frame; MUST match gsplat training --test-every "
+                        "so the evaluated frames were held out of training")
     p.add_argument("--device", default="cuda")
     args = p.parse_args()
 

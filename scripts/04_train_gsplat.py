@@ -26,6 +26,10 @@ def main() -> None:
     p.add_argument("--device", default="0")
     p.add_argument("--max-steps", type=int, default=30000)
     p.add_argument("--data-factor", type=int, default=1)
+    # test_every: gsplat holds out every Nth image from training for validation;
+    # stage 05 must use the same value so it evaluates genuinely held-out frames.
+    # TODO(verify): confirm --test_every is accepted by the pinned gsplat simple_trainer.
+    p.add_argument("--test-every", type=int, default=8)
     args = p.parse_args()
 
     Path(args.out).mkdir(parents=True, exist_ok=True)
@@ -35,6 +39,7 @@ def main() -> None:
         "--data_factor", str(args.data_factor),
         "--result_dir", args.out,
         "--max_steps", str(args.max_steps),
+        "--test_every", str(args.test_every),
     ]
     env = {**os.environ, "CUDA_VISIBLE_DEVICES": args.device}
     print("Running:", " ".join(cmd), "with CUDA_VISIBLE_DEVICES=" + args.device)

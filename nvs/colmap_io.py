@@ -15,12 +15,18 @@ class ImagePose:
 
 
 def parse_images_txt(path: Path) -> list[ImagePose]:
-    """Parse COLMAP images.txt. Pose lines alternate with 2D-point lines."""
+    """Parse COLMAP images.txt. Each registered image has a pose line followed
+    by a 2D-points line (which may be empty). Recognize pose lines structurally
+    (>=10 tokens, integer image id) and skip everything else, so empty point
+    lines and trailing blanks don't break alignment."""
     poses: list[ImagePose] = []
-    lines = [ln for ln in Path(path).read_text().splitlines()
-             if ln.strip() and not ln.startswith("#")]
-    for i in range(0, len(lines), 2):
-        parts = lines[i].split()
+    for ln in Path(path).read_text().splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        if len(parts) < 10 or not parts[0].lstrip("-").isdigit():
+            continue  # 2D-points line or other non-pose content
         poses.append(ImagePose(
             image_id=int(parts[0]),
             qvec=(float(parts[1]), float(parts[2]), float(parts[3]), float(parts[4])),

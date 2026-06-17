@@ -22,3 +22,7 @@ def test_select_sharp_frames_drops_below_min_score():
     scores = [0.1] * 50 + [50.0] * 50
     idx = select_sharp_frames(scores, target=10, min_score=1.0)
     assert all(i >= 50 for i in idx)
+
+
+def test_select_sharp_frames_target_zero_returns_empty():
+    assert select_sharp_frames([10.0] * 5, target=0, min_score=1.0) == []

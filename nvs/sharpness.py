@@ -16,6 +16,8 @@ def select_sharp_frames(
     """Pick ~`target` frame indices with even temporal coverage, dropping any
     frame whose sharpness is below `min_score`. Within each evenly-spaced bin,
     keep the sharpest surviving frame."""
+    if target <= 0:
+        return []
     eligible = [i for i, s in enumerate(scores) if s >= min_score]
     if not eligible:
         return []

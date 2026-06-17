@@ -1,6 +1,7 @@
 """Stage 02: generate per-frame arm/gripper masks with SAM2 video propagation.
 
-Click points are provided for ONE seed frame; SAM2 propagates through the rest.
+Click points are provided for ONE seed frame; SAM2 propagates FORWARD through
+the rest (frames before the seed frame are NOT masked by propagation).
 Outputs COLMAP-style mask PNGs to <out>/<frame>.png (0=ignore arm, 255=keep).
 
 Usage:
@@ -30,7 +31,10 @@ def main() -> None:
     p.add_argument("--out", default="masks")
     p.add_argument("--ckpt", required=True)
     p.add_argument("--cfg", required=True)
-    p.add_argument("--seed-frame", type=int, default=0)
+    p.add_argument("--seed-frame", type=int, default=0,
+                   help="frame index to place the seed clicks on; SAM2 propagates FORWARD, "
+                        "so use 0 (default) or ensure the arm is masked in earlier frames "
+                        "another way")
     p.add_argument("--points", nargs="+", required=True,
                    help="x,y positive clicks on the arm in the seed frame")
     p.add_argument("--labels", nargs="+", type=int, required=True,

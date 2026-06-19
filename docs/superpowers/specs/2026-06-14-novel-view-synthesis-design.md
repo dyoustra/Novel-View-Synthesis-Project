@@ -235,7 +235,7 @@ held-out renders.
 - **Extrapolation breakdown** → anchor orbits near observed poses; keep offsets
 within the reconstructed region.
 - **ZeroNVS dependency hell** → time-boxed; it is a comparison baseline, not the
-core deliverable; I2I only if ZeroNVS is clean.
+core deliverable; I2I only if ZeroNVS is clean. Also maybe a Docker image.
 - **Minor object manipulation** → mask the moved object during its motion window
 (C) or rely on transient handling (B); worst case drop that frame range.
 

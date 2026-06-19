@@ -7,10 +7,30 @@ See `docs/superpowers/specs/2026-06-14-novel-view-synthesis-design.md` for the
 design and `docs/superpowers/plans/2026-06-14-novel-view-synthesis.md` for the
 implementation plan.
 
-## Install
-1. Install COLMAP (`brew install colmap` / apt / conda) and a CUDA-enabled PyTorch.
-2. `pip install -r requirements.txt`
-3. `./setup.sh`  # clones SAM2, wild-gaussians, ZeroNVS at pinned SHAs + weights
+## Install (Linux + NVIDIA GPU)
+
+Recommended: put the CUDA build toolchain in a conda env. gsplat compiles CUDA
+kernels at install time and needs `nvcc`; a conda env pins the CUDA toolkit
+independent of the system and sidesteps the common "distro GCC too new for nvcc"
+build failure (notably on Fedora).
+
+1. **NVIDIA driver** (system-level, once): e.g. Fedora `sudo dnf install akmod-nvidia`
+   (via RPM Fusion), then reboot. Confirm with `nvidia-smi`; note its top-right
+   "CUDA Version" — that's the max CUDA your driver supports.
+2. **Conda env with CUDA toolkit + matching PyTorch:**
+   ```bash
+   conda create -n nvs python=3.10 && conda activate nvs
+   conda install -c "nvidia/label/cuda-12.1.0" cuda-toolkit   # provides nvcc
+   pip install torch --index-url https://download.pytorch.org/whl/cu121
+   pip install -r requirements.txt
+   ```
+   Pick a `cuXXX` torch wheel at or below your driver's CUDA version (step 1).
+3. **COLMAP:** easiest inside the env via `conda install -c conda-forge colmap`
+   (request a `*cuda*` build for GPU SIFT, optional). Fedora's `dnf install colmap`
+   also works but is typically CPU-only — fine for this dataset (250 frames @ 480p).
+4. **`./setup.sh`** (run inside the activated `nvs` env) — clones SAM2,
+   wild-gaussians, ZeroNVS at pinned SHAs + weights, and `pip install`s gsplat
+   (compiled against the conda CUDA toolkit).
 
 ## Run (single GPU, sequential)
 ```bash

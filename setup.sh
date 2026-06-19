@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Clone third-party NVS tools at pinned commits and fetch model weights.
-# Run on a CUDA machine. COLMAP must be installed separately (brew/apt/conda).
+# Run on a CUDA machine, INSIDE your activated conda env (so gsplat compiles
+# against the conda CUDA toolkit / nvcc). COLMAP is installed separately
+# (conda-forge / dnf) — see README "Install".
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

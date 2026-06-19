@@ -8,11 +8,12 @@ design and `docs/superpowers/plans/2026-06-14-novel-view-synthesis.md` for the
 implementation plan.
 
 ## Install (Linux + NVIDIA GPU)
+*Installed and run on Fedora distribution.*
 
-Recommended: put the CUDA build toolchain in a conda env. gsplat compiles CUDA
+Put the CUDA build toolchain in a conda env. gsplat compiles CUDA
 kernels at install time and needs `nvcc`; a conda env pins the CUDA toolkit
 independent of the system and sidesteps the common "distro GCC too new for nvcc"
-build failure (notably on Fedora).
+build failure.
 
 1. **NVIDIA driver** (system-level, once): e.g. Fedora `sudo dnf install akmod-nvidia`
    (via RPM Fusion), then reboot. Confirm with `nvidia-smi`; note its top-right
@@ -69,7 +70,8 @@ python scripts/07_run_zeronvs.py --colmap colmap --frames data/frames \
 ## Notes
 - Default training is single GPU, sequential (Method C then Method B). Pass a
   different `--device` to each to use two GPUs.
-- `04_train_wildgs.py` and `07_run_zeronvs.py` contain `TODO(verify)` markers for
-  CLIs that must be confirmed against the pinned third-party repos on first GPU run.
+- The code has 5 `TODO(verify)` markers (third-party CLIs + SHA pins) to resolve on
+  the GPU box. See `docs/gpu-verification-checklist.md` for the ordered runbook;
+  list them anytime with `grep -rn "TODO(verify)" setup.sh scripts/`.
 - The scene is mostly static with the robot arm as a transient foreground occluder;
   Method C masks it explicitly, Method B (wild-gaussians) models it as transient.

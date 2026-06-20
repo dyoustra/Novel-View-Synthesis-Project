@@ -10,30 +10,43 @@ implementation plan.
 ## Install (Linux + NVIDIA GPU)
 *Installed and run on Fedora distribution.*
 
-Put the CUDA build toolchain in a conda env. gsplat compiles CUDA
-kernels at install time and needs `nvcc`; a conda env pins the CUDA toolkit
-independent of the system and sidesteps the common "distro GCC too new for nvcc"
-build failure.
+Put the CUDA build toolchain in a conda env. The 3DGS extensions compile CUDA
+kernels at install time, so **four versions must agree**: the NVIDIA driver
+(the ceiling), the PyTorch wheel's bundled CUDA, the conda `nvcc`, and the host
+GCC (old enough for nvcc to parse — GCC 15 is too new). The steps below pin all
+four to a known-good set: driver ≥ 13.0, torch `cu130`, nvcc 13.0, GCC 13.
 
 1. **NVIDIA driver** (system-level, once): e.g. Fedora `sudo dnf install akmod-nvidia`
    (via RPM Fusion), then reboot. Confirm with `nvidia-smi`; note its top-right
-   "CUDA Version" — that's the max CUDA your driver supports.
-2. **Conda env with CUDA toolkit + matching PyTorch:**
+   "CUDA Version" — the max CUDA your driver supports (must be ≥ 13.0 for the
+   versions below; if lower, substitute a matching `cuXXX` / `cuda-XX.X` set).
+2. **Conda env with the CUDA 13.0 toolchain + matching PyTorch:**
    ```bash
    conda create -n nvs python=3.10 && conda activate nvs
-   conda install -c "nvidia/label/cuda-12.1.0" cuda-toolkit   # provides nvcc
-   pip install torch --index-url https://download.pytorch.org/whl/cu121
+   # nvcc + CUDA headers — install the components BY NAME: the `cuda-toolkit`
+   # metapackage name collides with a pip package torch pulls in, so a plain
+   # `conda install cuda-toolkit` silently no-ops.
+   conda install -c "nvidia/label/cuda-13.0.0" "cuda-nvcc=13.0" "cuda-cudart-dev=13.0"
+   # Host compiler nvcc can parse (GCC 15 fails with `__decay` undefined).
+   conda install -c conda-forge "gcc_linux-64=13" "gxx_linux-64=13"
+   pip install torch --index-url https://download.pytorch.org/whl/cu130
    pip install -r requirements.txt
    ```
-   Pick a `cuXXX` torch wheel at or below your driver's CUDA version (step 1).
 3. **COLMAP:** easiest inside the env via `conda install -c conda-forge colmap`
    (request a `*cuda*` build for GPU SIFT, optional). Fedora's `dnf install colmap`
-   also works but is typically CPU-only — fine for this dataset (250 frames @ 480p).
+   also works but is typically CPU-only — fine for this dataset (~250 frames @ 480p).
 4. **`./setup.sh`** (run inside the activated `nvs` env) — clones SAM2,
-   wild-gaussians, ZeroNVS at pinned SHAs + weights, and `pip install`s gsplat
-   (compiled against the conda CUDA toolkit).
+   wild-gaussians, ZeroNVS at pinned SHAs + weights; `pip install`s the gsplat
+   wheel; and clones the gsplat repo at the matching tag for its
+   `examples/simple_trainer.py` (the wheel ships the library but not the trainer),
+   installing the example deps with `--no-build-isolation` (fused-ssim /
+   fused-bilagrid import torch at build time).
 
 ## Run (single GPU, sequential)
+**Input:** the source video is not tracked in git (it's large and `*.mp4` is
+gitignored). Place it at `input/nvs_example_input_video.mp4` before running —
+copy it from wherever you were given the dataset (e.g. `rsync`/`scp` it to the box).
+
 ```bash
 # 01 — extract sharp, evenly-spaced frames
 python scripts/01_extract_frames.py --video input/nvs_example_input_video.mp4 --out data/frames

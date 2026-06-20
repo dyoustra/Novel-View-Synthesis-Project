@@ -88,6 +88,9 @@ Replace the `"main"` values with these SHAs and remove the `TODO(verify)` commen
 ---
 
 ### Suggested order on the GPU box
-1. `./setup.sh` (clones at `main`) → 2. verify gsplat `--test_every` (#1) →
-3. wild-gaussians CLI (#2) → 4. full 3DGS run (COLMAP → train → eval → render) →
-5. ZeroNVS CLI (#3) → 6. pin SHAs (#4/#5) and re-commit `setup.sh`.
+Walk the pipeline once and fix each **Check** as the stage that needs it comes up.
+Below, "Check N" = a numbered item *in this doc*; "stage NN" = a `scripts/NN_*` step.
+
+`./setup.sh` → **Check 1** (gsplat flag) → **Check 2** (wild-gaussians CLI) →
+run stages 03–06 (COLMAP → train → eval → render) → **Check 3** (ZeroNVS) + stage 07
+→ **Checks 4 & 5** (pin SHAs, re-commit `setup.sh`).

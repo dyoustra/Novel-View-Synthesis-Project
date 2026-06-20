@@ -13,7 +13,8 @@ mkdir -p "$TP"
 # --- pinned versions (update here to bump) ---
 SAM2_SHA="7e1596c0b6462eb1d1ba7e1492430fed95023598"
 GSPLAT_VER="1.5.3"    # proven: CUDA 13.0 / torch cu130 / GCC 13
-WILDGS_SHA="main"     # TODO(verify): pin to a tested commit after first successful run
+# Method B (wild-gaussians) runs via NerfBaselines from the `nb` env, not pinned
+# here — pin the nerfbaselines version in that env instead (README "Install" step 5).
 ZERONVS_SHA="main"    # TODO(verify): pin to a tested commit after first successful run
 
 clone_at() {  # url dir sha
@@ -41,9 +42,10 @@ mkdir -p "$TP/sam2/checkpoints"
 ( cd "$TP/sam2/checkpoints" && bash download_ckpts.sh ) || \
   echo "WARN: SAM2 checkpoint download failed — fetch sam2.1_hiera_large.pt manually"
 
-# --- wild-gaussians ---
-clone_at "https://github.com/jkulhanek/wild-gaussians.git" "wild-gaussians" "$WILDGS_SHA"
-pip install -e "$TP/wild-gaussians"
+# --- wild-gaussians (Method B): intentionally NOT installed here ---
+# It needs CUDA 11.8 / Py3.11 (incompatible with this CUDA-13 env) and ships as a
+# NerfBaselines method. It runs from the separate `nb` env via `--backend conda`,
+# which builds its isolated env automatically. See README "Install" step 5.
 
 # --- ZeroNVS (stretch baseline) ---
 clone_at "https://github.com/kylesargent/ZeroNVS.git" "ZeroNVS" "$ZERONVS_SHA"

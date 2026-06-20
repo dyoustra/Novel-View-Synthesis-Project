@@ -35,12 +35,20 @@ four to a known-good set: driver ≥ 13.0, torch `cu130`, nvcc 13.0, GCC 13.
 3. **COLMAP:** easiest inside the env via `conda install -c conda-forge colmap`
    (request a `*cuda*` build for GPU SIFT, optional). Fedora's `dnf install colmap`
    also works but is typically CPU-only — fine for this dataset (~250 frames @ 480p).
-4. **`./setup.sh`** (run inside the activated `nvs` env) — clones SAM2,
-   wild-gaussians, ZeroNVS at pinned SHAs + weights; `pip install`s the gsplat
-   wheel; and clones the gsplat repo at the matching tag for its
-   `examples/simple_trainer.py` (the wheel ships the library but not the trainer),
-   installing the example deps with `--no-build-isolation` (fused-ssim /
-   fused-bilagrid import torch at build time).
+4. **`./setup.sh`** (run inside the activated `nvs` env) — clones SAM2 and ZeroNVS
+   at pinned SHAs + weights; `pip install`s the gsplat wheel; and clones the gsplat
+   repo at the matching tag for its `examples/simple_trainer.py` (the wheel ships
+   the library but not the trainer), installing the example deps with
+   `--no-build-isolation` (fused-ssim / fused-bilagrid import torch at build time).
+5. **NerfBaselines env for Method B (wild-gaussians):** wild-gaussians needs
+   CUDA 11.8 / Python 3.11 — incompatible with the `nvs` CUDA-13 env — so it runs
+   in its own NerfBaselines-managed environment. Create a small orchestrator env:
+   ```bash
+   conda create -n nb python=3.11 -y && conda activate nb
+   pip install "nerfbaselines>=1.2.0"
+   ```
+   Stage 04's wild-gaussians step runs from this `nb` env; `--backend conda` makes
+   NerfBaselines auto-build the isolated CUDA-11.8 method env on first run.
 
 ## Run (single GPU, sequential)
 **Input:** the source video is not tracked in git (it's large and `*.mp4` is
@@ -62,6 +70,8 @@ scripts/03_run_colmap.sh data/frames masks colmap
 # 04 — train both methods (sequential on one GPU)
 python scripts/04_train_gsplat.py --data colmap --out outputs/gsplat \
     --trainer third_party/gsplat/examples/simple_trainer.py --device 0
+# wild-gaussians runs from the `nb` env (conda activate nb); NerfBaselines builds
+# its own CUDA-11.8 backend, so this step does NOT use the nvs env:
 python scripts/04_train_wildgs.py --data colmap --out outputs/wildgs --device 0
 
 # 05 — held-out metrics (PSNR/SSIM/LPIPS)

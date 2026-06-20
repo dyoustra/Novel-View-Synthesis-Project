@@ -30,20 +30,25 @@ images is less than the total registered images.
 
 ---
 
-## 2. wild-gaussians CLI  (subcommand + flags)
-**File:** `scripts/04_train_wildgs.py:22`
-**Current guess:** `wild-gaussians train --data colmap --output outputs/wildgs --backend colmap`
+## 2. wild-gaussians CLI  (RESOLVED — verify data ingestion on first run)
+**File:** `scripts/04_train_wildgs.py`
+**Resolved:** wild-gaussians needs CUDA 11.8 / Py3.11, so it does NOT share the
+`nvs` env. It ships as a NerfBaselines method; the wrapper now runs
+`nerfbaselines train --method wild-gaussians --data <colmap> --output <out>
+--backend conda` from the dedicated `nb` env (README "Install" step 5).
+`--backend conda` makes NerfBaselines build the isolated CUDA-11.8 env itself.
 
-**Verify:**
+**Verify on the box (from the `nb` env):**
 ```bash
-cat third_party/wild-gaussians/README.md        # find the train command
-wild-gaussians --help 2>/dev/null || python -m wildgaussians --help
+conda activate nb
+nerfbaselines --version                                   # confirm >= 1.2.0
+nerfbaselines train --help | grep -iE "method|data|output|backend"
 ```
-Update the `cmd` list in `04_train_wildgs.py` to match the real subcommand and flag
-names (data path, output dir, COLMAP backend). It may use nerfbaselines-style
-invocation rather than a bare `wild-gaussians train`.
+The one unproven piece is whether nerfbaselines ingests our raw `colmap/` dir at
+`--data`; if it complains about layout, capture the error. The first `--backend
+conda` run also builds the method env (slow, one-time).
 
-**Done when:** a short run produces a model artifact in `outputs/wildgs/`.
+**Done when:** a short run produces a model artifact under `outputs/wildgs/`.
 
 ---
 
@@ -71,19 +76,20 @@ the 3DGS half (gsplat + wild-gaussians) first; the report works without it.
 
 ---
 
-## 4 & 5. Pin third-party commit SHAs  (do LAST, after everything works)
-**File:** `setup.sh:14` (`WILDGS_SHA`) and `setup.sh:15` (`ZERONVS_SHA`)
-**Why:** they're currently `"main"` (a moving target). Once a run succeeds, pin the
-exact tested commits for reproducibility.
+## 4 & 5. Pin remaining versions  (do LAST, after everything works)
+**Where:** the `nb` env (nerfbaselines version) and `setup.sh` (`ZERONVS_SHA`).
+**Why:** Method B's version *is* the nerfbaselines version (it manages wild-gaussians
+internally), and ZeroNVS is still cloned at `"main"` (a moving target).
 
 **Resolve:**
 ```bash
-git -C third_party/wild-gaussians rev-parse HEAD   # paste into WILDGS_SHA
-git -C third_party/ZeroNVS rev-parse HEAD          # paste into ZERONVS_SHA
+pip show nerfbaselines | grep Version             # pin this in README step 5 (>=X.Y)
+git -C third_party/ZeroNVS rev-parse HEAD         # paste into ZERONVS_SHA
 ```
-Replace the `"main"` values with these SHAs and remove the `TODO(verify)` comments.
+Pin the tested nerfbaselines version in the README `nb`-env step, replace
+`ZERONVS_SHA="main"` with the SHA, and remove its `TODO(verify)`.
 
-**Done when:** `setup.sh` pins all three tools (SAM2 already pinned) to fixed SHAs.
+**Done when:** every tool is pinned — SAM2 SHA, gsplat `==`, nerfbaselines `>=`, ZeroNVS SHA.
 
 ---
 

@@ -19,11 +19,19 @@ def main() -> None:
     args = p.parse_args()
 
     Path(args.out).mkdir(parents=True, exist_ok=True)
-    # TODO(verify): confirm subcommand/flags against pinned wild-gaussians README.
-    cmd = ["wild-gaussians", "train",
-           "--data", args.data,
-           "--output", args.out,
-           "--backend", "colmap"]
+    # wild-gaussians needs CUDA 11.8 / Py3.11 — incompatible with the gsplat (nvs)
+    # CUDA-13 env. It ships as a NerfBaselines method, so run this stage from the
+    # dedicated `nb` env (just `nerfbaselines`) and use --backend conda: NerfBaselines
+    # builds and manages the isolated CUDA-11.8 method env itself. See README "Install".
+    # TODO(verify): confirm nerfbaselines ingests our COLMAP dir at --data (it may
+    # expect a specific colmap dataset layout) and writes artifacts under --output.
+    cmd = [
+        "nerfbaselines", "train",
+        "--method", "wild-gaussians",
+        "--data", args.data,
+        "--output", args.out,
+        "--backend", "conda",
+    ]
     env = {**os.environ, "CUDA_VISIBLE_DEVICES": args.device}
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True, env=env)

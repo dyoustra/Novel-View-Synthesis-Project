@@ -7,10 +7,14 @@ exact third-party CLI must be confirmed before trusting it.
 
 Find them anytime with: `grep -rn "TODO(verify)" setup.sh scripts/`
 
+**Status:** ✅ 1 done · 🟡 2 CLI done (verify ingestion on first run) · ⬜ 3 ZeroNVS · ⬜ 4/5 pins
+
 ---
 
-## 1. gsplat `--test_every` flag  (HIGHEST PRIORITY — backs eval correctness)
-**File:** `scripts/04_train_gsplat.py:31`
+## 1. gsplat `--test-every` flag  ✅ DONE  (backs eval correctness)
+**Status:** Resolved — verified on gsplat 1.5.3 (`--test-every`, default 8); wrapper
+updated to the hyphen form; stage 05 `--every` default 8 matches the held-out split.
+**File:** `scripts/04_train_gsplat.py`
 **Why it matters:** the held-out metrics (stage 05) are only valid if gsplat
 actually excludes those frames from training. We pass `--test_every N`; stage 05's
 `--every` must match it.
@@ -30,7 +34,7 @@ images is less than the total registered images.
 
 ---
 
-## 2. wild-gaussians CLI  (RESOLVED — verify data ingestion on first run)
+## 2. wild-gaussians CLI  🟡 CLI DONE — verify data ingestion on first run
 **File:** `scripts/04_train_wildgs.py`
 **Resolved:** wild-gaussians needs CUDA 11.8 / Py3.11, so it does NOT share the
 `nvs` env. It ships as a NerfBaselines method; the wrapper now runs

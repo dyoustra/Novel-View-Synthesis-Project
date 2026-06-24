@@ -1,8 +1,9 @@
 """Stage 02: generate per-frame arm/gripper masks with SAM2 video propagation.
 
-Click points are provided for ONE seed frame; SAM2 propagates FORWARD through
-the rest (frames before the seed frame are NOT masked by propagation).
-Outputs COLMAP-style mask PNGs to <out>/<frame>.png (0=ignore arm, 255=keep).
+Click points are provided for ONE seed frame; SAM2 propagates BOTH forward
+(seed->end) and backward (seed->start), so a strong mid-clip seed frame masks
+the whole clip. Outputs COLMAP-style mask PNGs to <out>/<frame>.png
+(0=ignore arm, 255=keep).
 
 Usage:
   python scripts/02_make_masks.py --frames data/frames --out masks \
@@ -32,9 +33,9 @@ def main() -> None:
     p.add_argument("--ckpt", required=True)
     p.add_argument("--cfg", required=True)
     p.add_argument("--seed-frame", type=int, default=0,
-                   help="frame index to place the seed clicks on; SAM2 propagates FORWARD, "
-                        "so use 0 (default) or ensure the arm is masked in earlier frames "
-                        "another way")
+                   help="frame index to place the seed clicks on; pick a frame where the "
+                        "arm is clearly visible. Propagation is bidirectional, so a mid-clip "
+                        "seed still masks earlier frames.")
     p.add_argument("--points", nargs="+", required=True,
                    help="x,y positive clicks on the arm in the seed frame")
     p.add_argument("--labels", nargs="+", type=int, required=True,
@@ -54,17 +55,23 @@ def main() -> None:
     lbls = np.array(args.labels, dtype=np.int32)
 
     predictor = build_sam2_video_predictor(args.cfg, args.ckpt)
+
+    def write_masks(iterator) -> None:
+        for frame_idx, _obj_ids, mask_logits in iterator:
+            occ = (mask_logits[0] > 0.0).cpu().numpy().squeeze()
+            cv2.imwrite(str(out / frame_paths[frame_idx].name),
+                        occluder_to_colmap_mask(occ))
+
     with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
         state = predictor.init_state(video_path=str(Path(args.frames)))
         predictor.add_new_points_or_box(
             inference_state=state, frame_idx=args.seed_frame, obj_id=1,
             points=pts, labels=lbls,
         )
-        for frame_idx, _obj_ids, mask_logits in predictor.propagate_in_video(state):
-            occ = (mask_logits[0] > 0.0).cpu().numpy().squeeze()
-            colmap_mask = occluder_to_colmap_mask(occ)
-            name = frame_paths[frame_idx].name
-            cv2.imwrite(str(out / name), colmap_mask)
+        # Cover the whole clip from one seed: forward (seed->end), then the
+        # backward pass (seed->start) masks frames before the seed frame too.
+        write_masks(predictor.propagate_in_video(state))
+        write_masks(predictor.propagate_in_video(state, reverse=True))
 
     print(f"Wrote {len(frame_paths)} masks -> {out}")
 

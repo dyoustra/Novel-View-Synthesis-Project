@@ -82,9 +82,11 @@ python scripts/05_eval_heldout.py --colmap colmap --frames data/frames \
 python scripts/06_render_orbits.py --colmap colmap \
     --ckpt outputs/gsplat/ckpts/ckpt_29999.pt --out outputs/gsplat/novel
 
-# 07 — ZeroNVS single-image baseline on the same 25 references
-python scripts/07_run_zeronvs.py --colmap colmap --frames data/frames \
-    --out outputs/zeronvs --zeronvs third_party/ZeroNVS
+# 07 — ZeroNVS single-image baseline: DEFERRED (future work, not run for this
+# submission; the >=100-view deliverable is met by stages 04/06 above). See
+# docs/gpu-verification-checklist.md #3. Kept for reference only:
+# python scripts/07_run_zeronvs.py --colmap colmap --frames data/frames \
+#     --out outputs/zeronvs --zeronvs third_party/ZeroNVS
 ```
 
 ## Tests
@@ -93,8 +95,9 @@ python scripts/07_run_zeronvs.py --colmap colmap --frames data/frames \
 ## Notes
 - Default training is single GPU, sequential (Method C then Method B). Pass a
   different `--device` to each to use two GPUs.
-- The code has 5 `TODO(verify)` markers (third-party CLIs + SHA pins) to resolve on
-  the GPU box. See `docs/gpu-verification-checklist.md` for the ordered runbook;
-  list them anytime with `grep -rn "TODO(verify)" setup.sh scripts/`.
+- Remaining `TODO(verify)` markers (third-party CLI/version checks) are tracked with
+  per-item status in `docs/gpu-verification-checklist.md`; list them anytime with
+  `grep -rn "TODO(verify)" setup.sh scripts/`. ZeroNVS (stage 07) is deferred to
+  future work — see that doc's item #3.
 - The scene is mostly static with the robot arm as a transient foreground occluder;
   Method C masks it explicitly, Method B (wild-gaussians) models it as transient.

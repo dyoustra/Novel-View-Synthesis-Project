@@ -1,6 +1,14 @@
 """Stage 07: single-image NVS baseline with ZeroNVS on the same 25 references.
 
-Usage:
+STATUS: DEFERRED — not run for this submission. ZeroNVS is the stretch baseline;
+the >=100-view deliverable is met by the 3DGS methods (B + C). ZeroNVS is per-image
+SDS NeRF distillation (~3 hr/image, built for a 40 GB A100) pinned to CUDA 11.8 —
+feasible but slow on the 3080 Ti, and unrunnable on the Blackwell 5090 (needs
+CUDA >= 12.8). Kept as a documented stub; see docs/gpu-verification-checklist.md #3
+and the report's future-work section. The cmd below is the ORIGINAL guess, NOT a
+verified ZeroNVS invocation (the real entrypoint is launch_inference.sh, threestudio).
+
+Usage (only if revived, from a py3.8/cu118 `zeronvs` env on the 3080 Ti):
   python scripts/07_run_zeronvs.py --colmap colmap --frames data/frames \
       --out outputs/zeronvs --zeronvs third_party/ZeroNVS \
       --n-refs 25 --views-per-ref 4 --device 0
@@ -45,7 +53,8 @@ def main() -> None:
         ref_img = Path(args.frames) / poses[r].name
         for v, yaw in enumerate(yaws):
             dst = out / f"ref{r:05d}_view{v}.png"
-            # TODO(verify): replace with the pinned ZeroNVS inference CLI.
+            # NOTE (deferred): placeholder cmd, NOT executed for this submission.
+            # Real ZeroNVS is launch_inference.sh (threestudio SDS) — see docstring.
             cmd = ["python", str(Path(args.zeronvs) / "scripts/run_inference.py"),
                    "--image", str(ref_img),
                    "--azimuth", str(float(yaw)),

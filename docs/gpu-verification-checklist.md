@@ -7,7 +7,7 @@ exact third-party CLI must be confirmed before trusting it.
 
 Find them anytime with: `grep -rn "TODO(verify)" setup.sh scripts/`
 
-**Status:** ✅ 1 done · 🟡 2 CLI done (verify ingestion on first run) · ⬜ 3 ZeroNVS · ⬜ 4/5 pins
+**Status:** ✅ 1 done · 🟡 2 CLI done (verify ingestion on first run) · ⏸️ 3 ZeroNVS deferred (future work) · ⬜ 4/5 pins
 
 ---
 
@@ -56,25 +56,23 @@ conda` run also builds the method env (slow, one-time).
 
 ---
 
-## 3. ZeroNVS inference CLI  (most likely to need real rework)
-**File:** `scripts/07_run_zeronvs.py:48`
-**Current guess:** `python <ZeroNVS>/scripts/run_inference.py --image ... --azimuth ... --elevation ... --output ...`
-**Reality:** ZeroNVS is threestudio-based; inference is likely a `launch.py` call
-with a config + checkpoint, not a simple `run_inference.py`. Expect to rewrite the
-inner `cmd`.
+## 3. ZeroNVS  ⏸️ DEFERRED — documented as future work (not run for this submission)
+**File:** `scripts/07_run_zeronvs.py` (stub, intentionally not executed)
+**Decision:** ZeroNVS is the spec's *stretch* baseline, and the ≥100-view deliverable
+is already met by the two 3DGS methods (B + C). ZeroNVS is **per-image SDS NeRF
+distillation** (~3 hr/image, built for a 40 GB A100), not quick feed-forward inference,
+and it pins **CUDA 11.8 / torch 2.0.1 / tiny-cuda-nn / zero123**:
+- **3080 Ti** (Ampere, 12 GB): feasible but slow, only at reduced fidelity.
+- **5090** (Blackwell, sm_120): cannot run — sm_120 needs CUDA ≥ 12.8, but ZeroNVS
+  pins 11.8 (the architecture *floor* exceeds the dependency *ceiling*).
 
-**Verify:**
-```bash
-cat third_party/ZeroNVS/README.md               # find the inference/sampling command
-ls third_party/ZeroNVS/                          # locate launch.py / configs / ckpts
-```
-Rewrite the `cmd` in `07_run_zeronvs.py` to the real inference entrypoint, mapping:
-- input image  → our `ref_img`
-- target pose / azimuth+elevation → our `yaw` (and a fixed elevation)
-- output path  → our `dst` (keep the `ref{r:05d}_view{v}.png` naming so figures stay
-  comparable with the gsplat render in stage 06)
+So we scope it as a motivated future extension and discuss it in the report rather than
+running it. `07_run_zeronvs.py` stays as a stub documenting the real approach.
 
-**Done when:** 100 PNGs land in `outputs/zeronvs/` named like the stage-06 outputs.
+**If revived later:** a separate `zeronvs` env (py3.8 / cu118 / tiny-cuda-nn + zero123
+submodule) on the 3080 Ti; download the M_6DoF+1 checkpoint (gdown); run
+`launch_inference.sh` per 256×256 reference image (image path, FOV, elevation, content
+scale) at reduced res/steps; keep `ref{r:05d}_view{v}.png` naming for figure parity.
 **Note:** ZeroNVS is the scoped *stretch* baseline — if its env/CLI fights you, land
 the 3DGS half (gsplat + wild-gaussians) first; the report works without it.
 

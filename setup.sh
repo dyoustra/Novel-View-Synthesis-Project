@@ -15,7 +15,7 @@ SAM2_SHA="7e1596c0b6462eb1d1ba7e1492430fed95023598"
 GSPLAT_VER="1.5.3"    # proven: CUDA 13.0 / torch cu130 / GCC 13
 # Method B (wild-gaussians) runs via NerfBaselines from the `nb` env, not pinned
 # here — pin the nerfbaselines version in that env instead (README "Install" step 5).
-ZERONVS_SHA="main"    # TODO(verify): pin to a tested commit after first successful run
+ZERONVS_SHA="main"    # ZeroNVS deferred (future work); unpinned until an actual run
 
 clone_at() {  # url dir sha
   local url="$1" dir="$2" sha="$3"

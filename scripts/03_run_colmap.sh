@@ -5,6 +5,10 @@
 # Usage: scripts/03_run_colmap.sh data/frames masks colmap
 set -euo pipefail
 
+# COLMAP's CLI binary is Qt-linked and inits a GUI platform even for headless
+# commands; over SSH (no X display) that aborts. Force the offscreen platform.
+export QT_QPA_PLATFORM=offscreen
+
 FRAMES="${1:-data/frames}"
 MASKS="${2:-masks}"
 WORK="${3:-colmap}"

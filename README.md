@@ -59,10 +59,12 @@ copy it from wherever you were given the dataset (e.g. `rsync`/`scp` it to the b
 # 01 — extract sharp, evenly-spaced frames
 python scripts/01_extract_frames.py --video input/nvs_example_input_video.mp4 --out data/frames
 
-# 02 — SAM2 arm masks (seed a click on the arm in frame 0)
+# 02 — SAM2 arm masks (seed on frame 85, where the arm is largest/clearest;
+# propagation is bidirectional, so one seed covers all frames)
 python scripts/02_make_masks.py --frames data/frames --out masks \
-    --ckpt third_party/sam2/checkpoints/sam2.1_hiera_large.pt \
-    --cfg configs/sam2.1/sam2.1_hiera_l.yaml --points 240,360 --labels 1
+    --ckpt third_party/sam2/checkpoints/sam2_hiera_large.pt \
+    --cfg sam2_hiera_l.yaml --seed-frame 85 \
+    --points 12,270 50,230 100,160 171,153 195,196 212,191 222,182 229,236 263,330 324,281 --labels 1 1 1 1 1 1 1 1 1 1
 
 # 03 — COLMAP SfM (poses + sparse cloud), uses masks as feature masks
 scripts/03_run_colmap.sh data/frames masks colmap

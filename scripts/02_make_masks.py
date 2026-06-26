@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import tempfile
 from pathlib import Path
 import sys
 
@@ -62,16 +63,23 @@ def main() -> None:
             cv2.imwrite(str(out / frame_paths[frame_idx].name),
                         occluder_to_colmap_mask(occ))
 
-    with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-        state = predictor.init_state(video_path=str(Path(args.frames)))
-        predictor.add_new_points_or_box(
-            inference_state=state, frame_idx=args.seed_frame, obj_id=1,
-            points=pts, labels=lbls,
-        )
-        # Cover the whole clip from one seed: forward (seed->end), then the
-        # backward pass (seed->start) masks frames before the seed frame too.
-        write_masks(predictor.propagate_in_video(state))
-        write_masks(predictor.propagate_in_video(state, reverse=True))
+    # SAM2's directory loader wants JPEGs named by integer index (00000.jpg, ...),
+    # but our frames are PNGs named frame_XXXXX.png. Stage integer-named JPEGs in a
+    # temp dir at the SAME resolution (so the seed-point coords still line up), then
+    # write masks back under the original PNG names via frame_paths[frame_idx].
+    with tempfile.TemporaryDirectory() as stage:
+        for i, fp in enumerate(frame_paths):
+            cv2.imwrite(str(Path(stage) / f"{i:05d}.jpg"), cv2.imread(str(fp)))
+        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
+            state = predictor.init_state(video_path=stage)
+            predictor.add_new_points_or_box(
+                inference_state=state, frame_idx=args.seed_frame, obj_id=1,
+                points=pts, labels=lbls,
+            )
+            # Cover the whole clip from one seed: forward (seed->end), then the
+            # backward pass (seed->start) masks frames before the seed frame too.
+            write_masks(predictor.propagate_in_video(state))
+            write_masks(predictor.propagate_in_video(state, reverse=True))
 
     print(f"Wrote {len(frame_paths)} masks -> {out}")
 

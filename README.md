@@ -103,3 +103,35 @@ python scripts/06_render_orbits.py --colmap colmap \
   future work — see that doc's item #3.
 - The scene is mostly static with the robot arm as a transient foreground occluder;
   Method C masks it explicitly, Method B (wild-gaussians) models it as transient.
+
+
+## Timing Estimations
+
+_Estimates except where noted. **Measured this run (3080 Ti):** 01 ≈ 3 s, 02 ≈ 20 s
+(compute only — SAM2 point-picking is separate human time)._
+
+  ┌───────────────────┬────────────┬────────────────────────────────────────────────────────────────────┐
+  │       Stage       │  Est. on   │                          Notes / variance                          │
+  │                   │  3080 Ti   │                                                                    │
+  ├───────────────────┼────────────┼────────────────────────────────────────────────────────────────────┤
+  │ 01 extract +      │ ~3 sec     │ CPU-bound (decoding 7119 frames + Laplacian); not GPU              │
+  │ sharpness         │            │                                                                    │
+  ├───────────────────┼────────────┼────────────────────────────────────────────────────────────────────┤
+  │ 02 SAM2 masks     │ ~20 sec    │ Interactive: your click + propagation over ~200 frames. Mostly     │
+  │                   │            │ your time, not compute                                             │
+  ├───────────────────┼────────────┼────────────────────────────────────────────────────────────────────┤
+  │ 03 COLMAP SfM     │ 15–45 min  │ ⚠️  the wildcard — also the main failure point, not just time. GPU  │
+  │                   │            │ SIFT (cuda colmap) is faster than CPU-only                         │
+  ├───────────────────┼────────────┼────────────────────────────────────────────────────────────────────┤
+  │ 04 gsplat (30k)   │ 25–45 min  │ Small images + modest frame count keep it brisk. ~10–15 min on a   │
+  │                   │            │ 5090                                                               │
+  ├───────────────────┼────────────┼────────────────────────────────────────────────────────────────────┤
+  │ 04 wild-gaussians │ 1–2 hr     │ ⚠️  includes a one-time ~15–40 min env build (--backend conda       │
+  │                   │ first time │ compiles the CUDA-11.8 stack) before training. Reruns ~30–60 min   │
+  ├───────────────────┼────────────┼────────────────────────────────────────────────────────────────────┤
+  │ 05 held-out       │ 2–5 min    │ Render held-out poses + PSNR/SSIM/LPIPS                            │
+  │ metrics           │            │                                                                    │
+  ├───────────────────┼────────────┼────────────────────────────────────────────────────────────────────┤
+  │ 06 render 100     │ 2–5 min    │ Fast — just rasterizing                                            │
+  │ orbits            │            │                                                                    │
+  └───────────────────┴────────────┴────────────────────────────────────────────────────────────────────┘

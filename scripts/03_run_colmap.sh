@@ -12,9 +12,20 @@ WORK="${3:-colmap}"
 mkdir -p "$WORK"
 DB="$WORK/database.db"
 
+# COLMAP looks for each mask at <mask_path>/<image_filename>.png — i.e. the FULL
+# image name plus a doubled ".png" (mask for frame_00000.png is frame_00000.png.png).
+# Our SAM2 masks are named frame_00000.png, so point COLMAP at a staging dir of
+# correctly-named symlinks. A name mismatch makes COLMAP SILENTLY skip masking
+# (no error) and extract features on the arm — so this naming must be exact.
 MASK_ARG=()
 if [ -d "$MASKS" ] && [ -n "$(ls -A "$MASKS" 2>/dev/null)" ]; then
-  MASK_ARG=(--ImageReader.mask_path "$MASKS")
+  CMASKS="$WORK/colmap_masks"
+  rm -rf "$CMASKS"; mkdir -p "$CMASKS"
+  MASKS_ABS="$(cd "$MASKS" && pwd)"
+  for m in "$MASKS_ABS"/*.png; do
+    ln -sfn "$m" "$CMASKS/$(basename "$m").png"
+  done
+  MASK_ARG=(--ImageReader.mask_path "$CMASKS")
 fi
 
 colmap feature_extractor \

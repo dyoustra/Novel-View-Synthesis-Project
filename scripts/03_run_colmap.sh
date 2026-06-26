@@ -32,14 +32,20 @@ if [ -d "$MASKS" ] && [ -n "$(ls -A "$MASKS" 2>/dev/null)" ]; then
   MASK_ARG=(--ImageReader.mask_path "$CMASKS")
 fi
 
+# GPU SIFT uses OpenGL (SiftGPU), which needs a display context unavailable over
+# headless SSH (opengl_utils context create fails). Use CPU SIFT — fast enough for
+# 250 frames @ 480p. (On a machine with a display / EGL, drop the use_gpu flags.)
 colmap feature_extractor \
   --database_path "$DB" \
   --image_path "$FRAMES" \
   --ImageReader.single_camera 1 \
   --ImageReader.camera_model OPENCV \
+  --SiftExtraction.use_gpu 0 \
   "${MASK_ARG[@]}"
 
-colmap sequential_matcher --database_path "$DB"
+colmap sequential_matcher \
+  --database_path "$DB" \
+  --SiftMatching.use_gpu 0
 
 mkdir -p "$WORK/sparse"
 colmap mapper \

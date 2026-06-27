@@ -53,10 +53,29 @@ colmap mapper \
   --image_path "$FRAMES" \
   --output_path "$WORK/sparse"
 
+# COLMAP may split into several sub-models and does NOT guarantee sparse/0 is the
+# largest (it numbers by creation order). Pick the model with the most registered
+# images and promote it to sparse/0, since downstream (gsplat/eval/render) all read
+# sparse/0. Swap dirs so the largest becomes 0.
+BEST=""; BEST_N=-1
+for d in "$WORK"/sparse/*/; do
+  [ -e "$d/images.bin" ] || [ -e "$d/images.txt" ] || continue
+  idx="$(basename "$d")"
+  n="$(colmap model_analyzer --path "$d" 2>&1 | grep -oE 'Registered images: [0-9]+' | grep -oE '[0-9]+' || echo 0)"
+  echo "  model $idx: ${n:-0} registered images"
+  if [ "${n:-0}" -gt "$BEST_N" ]; then BEST_N="${n:-0}"; BEST="$idx"; fi
+done
+echo "Largest model: sparse/$BEST ($BEST_N registered images)"
+if [ -n "$BEST" ] && [ "$BEST" != "0" ]; then
+  mv "$WORK/sparse/0" "$WORK/sparse/_swap_tmp"
+  mv "$WORK/sparse/$BEST" "$WORK/sparse/0"
+  mv "$WORK/sparse/_swap_tmp" "$WORK/sparse/$BEST"
+fi
+
 # gsplat wants images alongside sparse/0; symlink the frame dir.
 ln -sfn "$(cd "$FRAMES" && pwd)" "$WORK/images"
 
-# Convert model 0 to TXT for parsing/validation.
+# Convert the (now largest) model 0 to TXT for parsing/validation.
 colmap model_converter \
   --input_path "$WORK/sparse/0" \
   --output_path "$WORK/sparse/0" \

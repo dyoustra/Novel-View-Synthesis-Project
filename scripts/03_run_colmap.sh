@@ -15,6 +15,10 @@ WORK="${3:-colmap}"
 
 mkdir -p "$WORK"
 DB="$WORK/database.db"
+# Start from a clean database: reusing a DB across different matchers leaves stale
+# matches that corrupt later runs (e.g. exhaustive false matches lingering into a
+# sequential re-run). Re-extracting features for ~250 frames is cheap.
+rm -f "$DB"
 
 # COLMAP looks for each mask at <mask_path>/<image_filename>.png — i.e. the FULL
 # image name plus a doubled ".png" (mask for frame_00000.png is frame_00000.png.png).
@@ -43,15 +47,19 @@ colmap feature_extractor \
   --SiftExtraction.use_gpu 0 \
   "${MASK_ARG[@]}"
 
-# Matching strategy. Sequential only matches temporally-near frames, so a weak link
-# (e.g. the camera's far->near scale change mid-clip) splits the video into separate
-# components and orphans whole segments. Exhaustive matches ALL frame pairs, recovering
-# non-adjacent overlaps (the far "approach" frames share the table with the close-ups),
-# at O(n^2) cost — fine for ~250 frames. Override with MATCHER=sequential if needed.
-MATCHER="${MATCHER:-exhaustive}"
-colmap "${MATCHER}_matcher" \
-  --database_path "$DB" \
-  --SiftMatching.use_gpu 0
+# Matching strategy. Sequential (default) matches temporally-near frames and is robust
+# here. Exhaustive (all pairs) over-matches this scene's repetitive textures (scattered
+# identical stickers, regular floor planks), creating false matches that poison
+# reconstruction — avoid it. To bridge a hard cut / revisit that sequential misses,
+# set VOCAB_TREE to a COLMAP vocab-tree file to enable loop detection: it adds only a
+# few high-confidence retrieved pairs, not the all-pairs flood.
+MATCHER="${MATCHER:-sequential}"
+MATCH_ARGS=(--database_path "$DB" --SiftMatching.use_gpu 0)
+if [ "$MATCHER" = "sequential" ] && [ -n "${VOCAB_TREE:-}" ]; then
+  MATCH_ARGS+=(--SequentialMatching.loop_detection 1
+               --SequentialMatching.vocab_tree_path "$VOCAB_TREE")
+fi
+colmap "${MATCHER}_matcher" "${MATCH_ARGS[@]}"
 
 # Fresh model dir so a re-run doesn't mix stale sub-models with new ones.
 rm -rf "$WORK/sparse"

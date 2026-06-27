@@ -43,10 +43,18 @@ colmap feature_extractor \
   --SiftExtraction.use_gpu 0 \
   "${MASK_ARG[@]}"
 
-colmap sequential_matcher \
+# Matching strategy. Sequential only matches temporally-near frames, so a weak link
+# (e.g. the camera's far->near scale change mid-clip) splits the video into separate
+# components and orphans whole segments. Exhaustive matches ALL frame pairs, recovering
+# non-adjacent overlaps (the far "approach" frames share the table with the close-ups),
+# at O(n^2) cost — fine for ~250 frames. Override with MATCHER=sequential if needed.
+MATCHER="${MATCHER:-exhaustive}"
+colmap "${MATCHER}_matcher" \
   --database_path "$DB" \
   --SiftMatching.use_gpu 0
 
+# Fresh model dir so a re-run doesn't mix stale sub-models with new ones.
+rm -rf "$WORK/sparse"
 mkdir -p "$WORK/sparse"
 colmap mapper \
   --database_path "$DB" \
